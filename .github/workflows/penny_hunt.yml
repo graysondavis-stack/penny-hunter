@@ -1,0 +1,43 @@
+name: Penny Hunter Bot
+
+on:
+  schedule:
+    - cron: '5 * * * *'   # every hour at :05
+  workflow_dispatch:       # lets you trigger manually from the Actions tab
+
+jobs:
+  hunt:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # needed to commit seen_posts.json back
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Penny Hunter
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: python penny_hunter.py
+
+      - name: Save seen posts cache
+        run: |
+          git config user.name  "Penny Hunter Bot"
+          git config user.email "bot@penny-hunter"
+          git add seen_posts.json || true
+          git diff --staged --quiet || git commit -m "chore: update seen posts [skip ci]"
+          git push || true
